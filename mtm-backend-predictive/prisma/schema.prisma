@@ -1,0 +1,239 @@
+// ====================================================================
+// PT MENARA TERUS MAKMUR - ASTRA OTOPARTS GROUP
+// UNIFIED PRISMA DATABASE SCHEMA
+// Mesin Jingduan Forging IoT, Monitoring, CM, PM, TPM & PdM MPC System
+// ====================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ====================================================================
+// 1. MANAJEMEN PENGGUNA & HAK AKSES SISTEM (AUTH & ACCESS CONTROL)
+// ====================================================================
+
+model User {
+  id           Int      @id @default(autoincrement())
+  npk          String   @unique @db.VarChar(50)
+  username     String   @unique @db.VarChar(50)
+  displayName  String   @map("display_name") @db.VarChar(100)
+  role         String   @db.VarChar(50)
+  passwordHash String   @map("password_hash") @db.VarChar(255)
+  dept         String?  @default("Maintenance") @db.VarChar(100)
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("users")
+}
+
+// ====================================================================
+// 2. PEMANTAUAN REAL-TIME PERANGKAT & SENSOR (LIVE DEVICE STATE)
+// ====================================================================
+
+model DeviceMonitoring {
+  deviceId      String   @id @map("device_id") @db.VarChar(100)
+  machineId     String   @default("JINGDUAN-FORGING-01") @map("machine_id") @db.VarChar(50)
+  componentName String?  @map("component_name") @db.VarChar(150)
+  lastSeen      DateTime @map("last_seen") @db.Timestamptz
+  temperature   Float?
+  vibrationRms  Float?   @map("vibration_rms")
+  humidity      Float?
+  pressure      Float?
+  status        String   @default("OPTIMAL") @db.VarChar(50)
+  totalMessages BigInt   @default(1) @map("total_messages")
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([status, lastSeen(sort: Desc)])
+  @@map("device_monitoring")
+}
+
+// ====================================================================
+// 3. MODEL PREDICTIVE CONTROL (MPC) - 6 TITIK KRITIS JINGDUAN FORGING
+// ====================================================================
+
+model PdmMpcComponent {
+  id                Int      @id @default(autoincrement())
+  componentKey      String   @unique @map("component_key") @db.VarChar(50)
+  componentName     String   @map("component_name") @db.VarChar(150)
+  sensorType        String   @map("sensor_type") @db.VarChar(50)
+  unit              String   @db.VarChar(20)
+  currentValue      Float    @default(0.0) @map("current_value")
+  baselineValue     Float    @map("baseline_value")
+  thresholdWarning  Float    @map("threshold_warning")
+  thresholdCritical Float    @map("threshold_critical")
+  healthScore       Float    @default(100.0) @map("health_score")
+  status            String   @default("OPTIMAL") @db.VarChar(50)
+  lastDiagnosticAt  DateTime @default(now()) @map("last_diagnostic_at") @db.Timestamptz
+
+  @@map("pdm_mpc_components")
+}
+
+// ====================================================================
+// 4. PILAR 1: CORRECTIVE MAINTENANCE (CM) - TRIGGER: PRODUKSI
+// ====================================================================
+
+model CmTicket {
+  id                  Int       @id @default(autoincrement())
+  ticketNo            String    @unique @map("ticket_no") @db.VarChar(50)
+  machineId           String    @default("JINGDUAN-FORGING-01") @map("machine_id") @db.VarChar(50)
+  problemTitle        String    @map("problem_title") @db.VarChar(200)
+  description         String?   @db.Text
+  reportedByNpk       String    @map("reported_by_npk") @db.VarChar(50)
+  reportedByName      String?   @map("reported_by_name") @db.VarChar(100)
+  reporterDept        String?   @default("Produksi Machining") @map("reporter_dept") @db.VarChar(100)
+  priority            String    @default("High") @db.VarChar(20) // 'Low', 'Medium', 'High', 'Urgent'
+  status              String    @default("waiting") @db.VarChar(30) // 'waiting', 'in_progress', 'resolved', 'closed'
+  assignedPic         String?   @map("assigned_pic") @db.VarChar(100)
+  mttrTargetMinutes   Int       @default(30) @map("mttr_target_minutes")
+  responseTimeMinutes Int?      @map("response_time_minutes")
+  actualMttrMinutes   Int?      @map("actual_mttr_minutes")
+  actionTaken         String?   @map("action_taken") @db.Text
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  resolvedAt          DateTime? @map("resolved_at") @db.Timestamptz
+
+  @@index([status, createdAt(sort: Desc)])
+  @@map("cm_tickets")
+}
+
+// ====================================================================
+// 5. PILAR 2: PREVENTIVE MAINTENANCE (PM) - TRIGGER: MAINTENANCE
+// ====================================================================
+
+model PmTask {
+  id                Int       @id @default(autoincrement())
+  taskCode          String    @unique @map("task_code") @db.VarChar(50)
+  machineId         String    @default("JINGDUAN-FORGING-01") @map("machine_id") @db.VarChar(50)
+  partName          String    @map("part_name") @db.VarChar(150)
+  taskDescription   String    @map("task_description") @db.Text
+  cycleIntervalType String    @default("Stroke") @map("cycle_interval_type") @db.VarChar(50) // 'Stroke', 'Monthly', 'Hours'
+  cycleStrokeTarget Int       @default(500) @map("cycle_stroke_target")
+  currentStroke     Int       @default(0) @map("current_stroke")
+  targetDate        DateTime  @map("target_date") @db.Date
+  picMaintenance    String    @map("pic_maintenance") @db.VarChar(100)
+  status            String    @default("Mendatang") @db.VarChar(30) // 'Mendatang', 'Selesai', 'Overdue'
+  completionDate    DateTime? @map("completion_date") @db.Date
+  notes             String?   @db.Text
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([status, targetDate(sort: Asc)])
+  @@map("pm_tasks")
+}
+
+// ====================================================================
+// 6. PILAR TPM: MASTER JIG & FIXTURE CONTROL
+// ====================================================================
+
+model MasterJig {
+  id              Int       @id @default(autoincrement())
+  jigCode         String    @unique @map("jig_code") @db.VarChar(100)
+  jigName         String    @map("jig_name") @db.VarChar(200)
+  lineLocation    String    @map("line_location") @db.VarChar(100)
+  currentCycles   Int       @default(0) @map("current_cycles")
+  maxCycles       Int       @default(500) @map("max_cycles")
+  rackLocation    String?   @map("rack_location") @db.VarChar(50)
+  status          String    @default("Operating") @db.VarChar(50) // 'Operating', 'Standby', 'Maintenance'
+  lastInspectedAt DateTime? @map("last_inspected_at") @db.Date
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("master_jigs")
+}
+
+// ====================================================================
+// 7. TIME-SERIES & TELEMETRI SENSOR MESIN (TIMESCALE / IOT TELEMETRY)
+// ====================================================================
+
+model IotTelemetry {
+  id           BigInt   @default(autoincrement())
+  deviceId     String   @map("device_id") @db.VarChar(100)
+  machineId    String   @default("JINGDUAN-FORGING-01") @map("machine_id") @db.VarChar(50)
+  temperature  Float?
+  vibrationRms Float?   @map("vibration_rms")
+  humidity     Float?
+  pressure     Float?
+  status       String?  @default("NORMAL") @db.VarChar(50)
+  rawPayload   Json?    @map("raw_payload")
+  recordedAt   DateTime @map("recorded_at") @db.Timestamptz
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@id([recordedAt, id])
+  @@index([deviceId, recordedAt(sort: Desc)])
+  @@index([status, recordedAt(sort: Desc)])
+  @@index([machineId, recordedAt(sort: Desc)])
+  @@map("iot_telemetry")
+}
+
+// ====================================================================
+// 8. AGREGASI TELEMETRI PER JAM (HOURLY SUMMARY ANALYTICS)
+// ====================================================================
+
+model TelemetryHourlySummary {
+  bucket         DateTime @db.Timestamptz
+  deviceId       String   @map("device_id") @db.VarChar(100)
+  machineId      String   @default("JINGDUAN-FORGING-01") @map("machine_id") @db.VarChar(50)
+  avgTemperature Float?   @map("avg_temperature")
+  maxTemperature Float?   @map("max_temperature")
+  minTemperature Float?   @map("min_temperature")
+  avgVibration   Float?   @map("avg_vibration")
+  maxVibration   Float?   @map("max_vibration")
+  sampleCount    Int?     @default(1) @map("sample_count")
+
+  @@id([bucket, deviceId])
+  @@index([deviceId, bucket(sort: Desc)])
+  @@map("telemetry_hourly_summary")
+}
+
+// ====================================================================
+// 9. LOG ANOMALI SENSOR & THRESHOLD BREACH (ANOMALY RECORDS)
+// ====================================================================
+
+model SensorAnomalyRecord {
+  id             BigInt   @id @default(autoincrement())
+  deviceId       String   @map("device_id") @db.VarChar(100)
+  machineId      String   @default("JINGDUAN-FORGING-01") @map("machine_id") @db.VarChar(50)
+  metricType     String   @map("metric_type") @db.VarChar(50) // 'TEMPERATURE', 'VIBRATION', 'PRESSURE'
+  detectedValue  Float    @map("detected_value")
+  thresholdLimit Float    @map("threshold_limit")
+  severity       String   @default("WARNING") @db.VarChar(20) // 'WARNING', 'CRITICAL'
+  description    String?  @db.Text
+  recordedAt     DateTime @map("recorded_at") @db.Timestamptz
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([deviceId, recordedAt(sort: Desc)])
+  @@map("sensor_anomaly_records")
+}
+
+// ====================================================================
+// 10. AUDIT LOG & AKTIVITAS SISTEM (SYSTEM MONITORING LOGS)
+// ====================================================================
+
+model SystemMonitoringLog {
+  id        BigInt   @id @default(autoincrement())
+  deviceId  String?  @map("device_id") @db.VarChar(100)
+  eventType String   @default("TELEMETRY_INGEST") @map("event_type") @db.VarChar(50)
+  severity  String   @default("INFO") @db.VarChar(20) // 'INFO', 'WARN', 'ERROR', 'CRITICAL'
+  message   String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([deviceId, createdAt(sort: Desc)])
+  @@map("system_monitoring_logs")
+}
+
+// ====================================================================
+// 11. RIWAYAT NOTIFIKASI & PERINGATAN (ALERT NOTIFICATIONS)
+// ====================================================================
+
+model AlertNotification {
+  id           BigInt   @id @default(autoincrement())
+  alertTitle   String   @map("alert_title") @db.VarChar(200)
+  alertMessage String   @map("alert_message") @db.Text
+  sourceDevice String?  @map("source_device") @db.VarChar(100)
+  severity     String   @default("WARNING") @db.VarChar(20)
+  isRead       Boolean  @default(false) @map("is_read")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("alert_notifications")
+}

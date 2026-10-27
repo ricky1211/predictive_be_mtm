@@ -1,0 +1,8 @@
+{
+  "bushing": 80,
+  "bearing": 80,
+  "link": 80,
+  "vibration": 0.18,
+  "toastAlert": true,
+  "audioAlert": true
+}

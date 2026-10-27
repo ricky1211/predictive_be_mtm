@@ -1,0 +1,43 @@
+{
+  "name": "iot-mqtt-backend",
+  "version": "1.0.0",
+  "description": "Backend MQTT subscriber & API server for PostgreSQL (Timescale & Monitoring)",
+  "main": "dist/subscriber.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "tsx src/index.ts",
+    "start:dev": "tsx watch src/index.ts",
+    "dev": "tsx watch src/index.ts",
+    "subscriber": "tsx src/subscriber.ts",
+    "simulator": "tsx src/publisherSimulator.ts",
+    "start:prod": "node dist/index.js",
+    "prisma:generate": "prisma generate",
+    "prisma:push": "prisma db push",
+    "prisma:seed": "tsx prisma/seed.ts",
+    "prisma:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.10.1",
+    "@prisma/client": "^7.10.1",
+    "@whiskeysockets/baileys": "^6.7.24",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "mqtt": "^5.10.4",
+    "pg": "^8.13.1",
+    "pino": "^10.4.0",
+    "prisma": "^7.10.1",
+    "qrcode": "^1.5.4",
+    "qrcode-terminal": "^0.12.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.2",
+    "@types/pg": "^8.11.10",
+    "@types/qrcode": "^1.5.6",
+    "@types/qrcode-terminal": "^0.12.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
